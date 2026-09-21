@@ -63,7 +63,7 @@ userSchema.methods.isPasswordCorrect = async function(password){
         return await bcrypt.compare(password, this.password)
 
 }
-
+//short duration
 userSchema.methods.generateAccessToken = function(){
   return  jwt.sign(
         {
@@ -82,13 +82,13 @@ userSchema.methods.generateAccessToken = function(){
 
 
 
-
+//long duration, get stored in db and with user also. no need to enter password again nd again
 userSchema.methods.generateRefreshToken = function(){
     return  jwt.sign(
         {
             _id: this._id,
         },
-        process.env.REFERSH_TOKEN_SECRET,
+        process.env.REFRESH_TOKEN_SECRET,
         {
             expiresIn: process.env.REFRESH_TOKEN_EXPIRY
         }
