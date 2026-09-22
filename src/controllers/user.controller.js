@@ -170,11 +170,11 @@ const loginUser = asyncHandler( async (req, res) => {
 })
 
 const logoutUser = asyncHandler(async (req,res) => {
-  User.findByIdAndUpdate(
+  await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshToken: undefined
+      $unset: {
+        refreshToken: 1
       }
     },
       {
@@ -194,12 +194,18 @@ const logoutUser = asyncHandler(async (req,res) => {
   .json(new ApiResponse(200, {}, "User logged Out"))
 })
 
+
+//Tokens
+
+
   const refreshAccessToken = asyncHandler(async(req,res) => {
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
 
     if (!incomingRefreshToken) {
       throw new ApiError(401, "Unauthorized request")
     }
+
+    //verify the refresh token
  
     try {
       const decodedToken = jwt.verify(
@@ -207,7 +213,7 @@ const logoutUser = asyncHandler(async (req,res) => {
         process.env.REFRESH_TOKEN_SECRET
       )
       
-      const user = User.findById(decodedToken?._id)
+      const user = await  User.findById(decodedToken?._id)
      
       if (!user){
         throw new ApiError(401, 'Invlaid refresh token')
@@ -274,7 +280,7 @@ const logoutUser = asyncHandler(async (req,res) => {
    const updateAccountDetails = asyncHandler(async(req, res) => {
          const {fullname, email} = req.body
 
-         if(!fullName  || !email) {
+         if(!fullname  || !email) {
           throw new ApiError(400, "All fields are required")
          }
 
@@ -358,7 +364,7 @@ const logoutUser = asyncHandler(async (req,res) => {
         new ApiResponse(200, user, "Cover image updated successfully")
        )
    })
-
+ //first pipeline
 
    const getUserChannelProfile = asyncHandler(async(req, res) => {
     const {username} = req.params
@@ -369,7 +375,7 @@ const logoutUser = asyncHandler(async (req,res) => {
 
     const channel = await User.aggregate([
       //pipelines
-      //user matching pipeline
+      //user matching pipeline -- filter
          {
           $match: {
             username: username?.toLowerCase()
@@ -379,7 +385,7 @@ const logoutUser = asyncHandler(async (req,res) => {
          {
           $lookup: {
             from: "subscriptions",
-            localfield: "_id",
+            localField: "_id",
             foreignField: "channel",
             as: "subscribers"
           }
@@ -395,10 +401,10 @@ const logoutUser = asyncHandler(async (req,res) => {
           }
          },
          //
-         {
+         { //to calculate additional information.
           $addFields: {
             subscribersCount: {
-              $size: "$subcribers"
+              $size: "$subscribers" //counts the number of items in an array.
             },
             channelsSubscibedToCount: {
               $size: "$subscribedTo"
@@ -413,6 +419,7 @@ const logoutUser = asyncHandler(async (req,res) => {
           }
          },
          //projects the selected values
+         //controls which fields should appear in the final result.
          {
           $project: {
             fullname: 1, //flag on - 1
@@ -421,7 +428,7 @@ const logoutUser = asyncHandler(async (req,res) => {
             channelsSubscibedToCount: 1,
             isSubscribed: 1,
             avatar: 1,
-            coverimage: 1,
+            coverImage: 1,
             email: 1
           }
          }
@@ -448,8 +455,8 @@ const logoutUser = asyncHandler(async (req,res) => {
           _id: new mongoose.Types.ObjectId(req.user._id)
         }
       },
-      {
-        lookup: {
+      {//get videos from watchHistory
+        $lookup: {
           from: "videos",
           localField: "watchHistory",
           foreignField: "_id",
@@ -459,7 +466,7 @@ const logoutUser = asyncHandler(async (req,res) => {
               $lookup: {
                 from: "users",
                 localField: "owner",
-                foreignField: "-id",
+                foreignField: "_id",
                 as: "owner",
                 pipeline: [
                   {
@@ -473,7 +480,7 @@ const logoutUser = asyncHandler(async (req,res) => {
               }
             },
             {
-              $addFileds: {
+              $addFields: {
                 owner: {
                   $first: "$owner"
                 }
@@ -504,3 +511,7 @@ export {
   getUserChannelProfile,
   getWatchHistory
 }
+
+
+//form validation -- formix
+//zod validation
